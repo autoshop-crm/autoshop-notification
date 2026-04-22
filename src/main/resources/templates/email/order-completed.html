@@ -1,0 +1,25 @@
+<!doctype html>
+<html lang="ru" xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <title>Заказ завершен</title>
+</head>
+<body style="font-family: Arial, sans-serif; color: #1f2933; line-height: 1.5;">
+<h2 style="margin-bottom: 12px;">Заказ завершен</h2>
+<p>Здравствуйте, <span th:text="${customerFirstName}">клиент</span>.</p>
+<p>
+    Заказ <strong th:text="${orderNumber}">AS-2026-00042</strong> завершен.
+</p>
+<p th:if="${completedAt != null and !completedAt.isBlank()}">
+    Дата завершения: <span th:text="${completedAt}">19.04.2026 18:30</span>
+</p>
+<p th:if="${hasFinalAmount}">
+    Итоговая сумма: <strong th:text="${finalAmount}">24 500,00 RUB</strong>
+</p>
+<p th:if="${hasLoyaltyPoints}">
+    Начислено бонусных баллов: <strong th:text="${loyaltyPointsEarned}">245</strong>.
+</p>
+<p>Спасибо, что выбрали AutoShop.</p>
+<p style="margin-top: 24px;">AutoShop</p>
+</body>
+</html>

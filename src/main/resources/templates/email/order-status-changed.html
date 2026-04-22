@@ -1,0 +1,26 @@
+<!doctype html>
+<html lang="ru" xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <title>Статус заказа изменен</title>
+</head>
+<body style="font-family: Arial, sans-serif; color: #1f2933; line-height: 1.5;">
+<h2 style="margin-bottom: 12px;">Статус заказа изменен</h2>
+<p>Здравствуйте, <span th:text="${customerFirstName}">клиент</span>.</p>
+<p>
+    По заказу <strong th:text="${orderNumber}">AS-2026-00042</strong>
+    обновлен статус:
+    <strong th:text="${newStatusLabel}">В работе</strong>.
+</p>
+<p th:if="${previousStatusLabel != null and !previousStatusLabel.isBlank()}">
+    Предыдущий статус: <span th:text="${previousStatusLabel}">Новый</span>
+</p>
+<p th:if="${changedAt != null and !changedAt.isBlank()}">
+    Дата изменения: <span th:text="${changedAt}">19.04.2026 15:00</span>
+</p>
+<p th:if="${managerComment != null and !managerComment.isBlank()}">
+    Комментарий: <span th:text="${managerComment}">Диагностика завершена</span>
+</p>
+<p style="margin-top: 24px;">AutoShop</p>
+</body>
+</html>

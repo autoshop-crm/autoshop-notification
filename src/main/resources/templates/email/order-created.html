@@ -1,0 +1,26 @@
+<!doctype html>
+<html lang="ru" xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <title>Заказ создан</title>
+</head>
+<body style="font-family: Arial, sans-serif; color: #1f2933; line-height: 1.5;">
+<h2 style="margin-bottom: 12px;">Ваш заказ создан</h2>
+<p>Здравствуйте, <span th:text="${customerFirstName}">клиент</span>.</p>
+<p>
+    Мы создали заказ <strong th:text="${orderNumber}">AS-2026-00042</strong>
+    и скоро начнем его обработку.
+</p>
+<p>
+    Автомобиль:
+    <strong th:text="|${vehicleBrand} ${vehicleModel}|">Toyota Camry</strong>
+    <span th:if="${vehiclePlateNumber != null and !vehiclePlateNumber.isBlank()}"
+          th:text="|(${vehiclePlateNumber})|">(A123BC77)</span>
+</p>
+<p th:if="${createdAt != null and !createdAt.isBlank()}">
+    Дата создания: <span th:text="${createdAt}">19.04.2026 13:15</span>
+</p>
+<p>Пожалуйста, сохраните номер заказа для обращения в сервис.</p>
+<p style="margin-top: 24px;">AutoShop</p>
+</body>
+</html>
