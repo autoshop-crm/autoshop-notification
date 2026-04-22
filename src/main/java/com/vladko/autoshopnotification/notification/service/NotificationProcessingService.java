@@ -4,6 +4,7 @@ import java.util.UUID;
 
 import com.vladko.autoshopnotification.config.AppRetryProperties;
 import com.vladko.autoshopnotification.email.EmailMessage;
+import com.vladko.autoshopnotification.email.EmailSendResult;
 import com.vladko.autoshopnotification.email.EmailSender;
 import com.vladko.autoshopnotification.event.dto.EventMetadata;
 import com.vladko.autoshopnotification.event.dto.NotificationEventEnvelope;
@@ -85,9 +86,14 @@ public class NotificationProcessingService {
             notification.markSending();
             notificationRepository.save(notification);
 
-            sendWithRetry(notification, rendered.emailMessage());
+            EmailSendResult sendResult = sendWithRetry(notification, rendered.emailMessage());
 
-            notification.markSent();
+            notification.markSent(
+                    sendResult.provider(),
+                    sendResult.providerMessageId(),
+                    sendResult.providerMessageUuid(),
+                    sendResult.providerMessageHref()
+            );
             notificationRepository.save(notification);
             inbox.markProcessed();
             inboxRepository.save(inbox);
@@ -123,19 +129,20 @@ public class NotificationProcessingService {
         }
     }
 
-    private void sendWithRetry(NotificationEntity notification, EmailMessage emailMessage) {
+    private EmailSendResult sendWithRetry(NotificationEntity notification, EmailMessage emailMessage) {
         AppRetryProperties.Retry retry = retryProperties.email();
         int maxAttempts = Math.max(retry.maxAttempts(), 1);
         MailException lastMailException = null;
+        String provider = providerName();
 
         for (int attemptNumber = 1; attemptNumber <= maxAttempts; attemptNumber++) {
             NotificationDeliveryAttemptEntity attempt =
-                    attemptRepository.save(NotificationDeliveryAttemptEntity.started(notification, attemptNumber, "SMTP"));
+                    attemptRepository.save(NotificationDeliveryAttemptEntity.started(notification, attemptNumber, provider));
             try {
-                emailSender.send(emailMessage);
+                EmailSendResult sendResult = emailSender.send(emailMessage);
                 attempt.markSuccess();
                 attemptRepository.save(attempt);
-                return;
+                return sendResult == null ? EmailSendResult.accepted(provider) : sendResult;
             } catch (MailException exception) {
                 boolean retryable = retryClassifier.isRetryable(exception);
                 attempt.markFailed(retryable, exception.getMessage());
@@ -151,6 +158,11 @@ public class NotificationProcessingService {
         }
 
         throw new RetryableNotificationException("Email sending failed after retry attempts", lastMailException);
+    }
+
+    private String providerName() {
+        String provider = emailSender.providerName();
+        return provider == null || provider.isBlank() ? "EMAIL" : provider;
     }
 
     private NotificationEventInboxEntity getOrCreateInbox(NotificationEventEnvelope envelope, EventMetadata metadata) {

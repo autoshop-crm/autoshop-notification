@@ -5,12 +5,14 @@ import java.io.UnsupportedEncodingException;
 import com.vladko.autoshopnotification.config.AppMailProperties;
 import jakarta.mail.MessagingException;
 import jakarta.mail.internet.MimeMessage;
+import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.mail.MailPreparationException;
 import org.springframework.mail.javamail.JavaMailSender;
 import org.springframework.mail.javamail.MimeMessageHelper;
 import org.springframework.stereotype.Service;
 
 @Service
+@ConditionalOnProperty(prefix = "app.mail", name = "provider", havingValue = "smtp", matchIfMissing = true)
 public class SmtpEmailSender implements EmailSender {
 
     private final JavaMailSender mailSender;
@@ -22,7 +24,7 @@ public class SmtpEmailSender implements EmailSender {
     }
 
     @Override
-    public void send(EmailMessage message) {
+    public EmailSendResult send(EmailMessage message) {
         MimeMessage mimeMessage = mailSender.createMimeMessage();
         try {
             MimeMessageHelper helper = new MimeMessageHelper(mimeMessage, "UTF-8");
@@ -34,5 +36,11 @@ public class SmtpEmailSender implements EmailSender {
             throw new MailPreparationException("Failed to prepare email message", exception);
         }
         mailSender.send(mimeMessage);
+        return EmailSendResult.accepted(providerName());
+    }
+
+    @Override
+    public String providerName() {
+        return "SMTP";
     }
 }

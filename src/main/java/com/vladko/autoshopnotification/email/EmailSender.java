@@ -2,5 +2,9 @@ package com.vladko.autoshopnotification.email;
 
 public interface EmailSender {
 
-    void send(EmailMessage message);
+    EmailSendResult send(EmailMessage message);
+
+    default String providerName() {
+        return "EMAIL";
+    }
 }

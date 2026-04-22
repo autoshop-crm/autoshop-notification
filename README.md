@@ -29,6 +29,25 @@ SMTP: localhost:1025
 UI: http://localhost:8025
 ```
 
+By default the service uses SMTP:
+
+```properties
+app.mail.provider=smtp
+```
+
+To validate Mailjet without sending real email, switch the provider and keep sandbox mode enabled:
+
+```properties
+app.mail.provider=mailjet
+app.mail.from=verified-sender@example.com
+app.mail.from-name=AutoShop
+app.mailjet.api-key=...
+app.mailjet.api-secret=...
+app.mailjet.sandbox-mode=true
+```
+
+Mailjet production sending requires a verified sender address or domain. The Mailjet implementation uses Send API v3.1, sends `CustomID=eventId`, and stores returned `MessageID` / `MessageUUID` on the notification record.
+
 ## Kafka
 
 ```text

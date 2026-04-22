@@ -80,11 +80,23 @@ class NotificationKafkaConsumerIntegrationTest {
 
         verify(emailSender, timeout(5000).times(1)).send(any(EmailMessage.class));
 
+        waitUntilNotificationStatus(envelope.eventId(), NotificationStatus.SENT);
         var notification = notificationRepository
                 .findByEventIdAndChannel(envelope.eventId(), NotificationChannel.EMAIL)
                 .orElseThrow();
         assertThat(notification.getStatus()).isEqualTo(NotificationStatus.SENT);
         assertThat(attemptRepository.count()).isEqualTo(1);
+    }
+
+    private void waitUntilNotificationStatus(UUID eventId, NotificationStatus expectedStatus) throws InterruptedException {
+        long deadline = System.currentTimeMillis() + 5000;
+        while (System.currentTimeMillis() < deadline) {
+            var notification = notificationRepository.findByEventIdAndChannel(eventId, NotificationChannel.EMAIL);
+            if (notification.isPresent() && notification.get().getStatus() == expectedStatus) {
+                return;
+            }
+            Thread.sleep(50);
+        }
     }
 
     private NotificationEventEnvelope orderCreatedEnvelope() {

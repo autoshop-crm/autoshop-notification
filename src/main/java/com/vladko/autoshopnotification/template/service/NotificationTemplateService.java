@@ -62,7 +62,9 @@ public class NotificationTemplateService {
         context.setVariables(variables);
         String html = templateEngine.process(template.getBodyTemplatePath(), context);
 
-        return new RenderedNotification(templateKey, new EmailMessage(recipient, subject, html, templateKey));
+        String customId = envelope.eventId().toString();
+        String eventPayload = "eventType=" + envelope.eventType() + ";template=" + templateKey;
+        return new RenderedNotification(templateKey, new EmailMessage(recipient, subject, html, templateKey, customId, eventPayload));
     }
 
     private Map<String, Object> variablesFor(NotificationEventEnvelope envelope) {

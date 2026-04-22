@@ -2,16 +2,18 @@ package com.vladko.autoshopnotification.notification;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
-import static org.mockito.Mockito.doNothing;
+import static org.mockito.Mockito.doReturn;
 import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.when;
 
 import java.time.Instant;
 import java.util.UUID;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.vladko.autoshopnotification.email.EmailMessage;
+import com.vladko.autoshopnotification.email.EmailSendResult;
 import com.vladko.autoshopnotification.email.EmailSender;
 import com.vladko.autoshopnotification.event.dto.EventMetadata;
 import com.vladko.autoshopnotification.event.dto.NotificationEventEnvelope;
@@ -97,7 +99,7 @@ class NotificationProcessingServiceTest {
     void retriesTemporaryEmailFailure() {
         NotificationEventEnvelope envelope = orderCreatedEnvelope(UUID.randomUUID(), "ivan@example.com");
         doThrow(new MailSendException("smtp temporary failure"))
-                .doNothing()
+                .doReturn(EmailSendResult.accepted("SMTP"))
                 .when(emailSender).send(org.mockito.ArgumentMatchers.any(EmailMessage.class));
 
         processingService.process(envelope, METADATA);
@@ -106,6 +108,24 @@ class NotificationProcessingServiceTest {
                 .orElseThrow().getStatus()).isEqualTo(NotificationStatus.SENT);
         assertThat(attemptRepository.count()).isEqualTo(2);
         verify(emailSender, times(2)).send(org.mockito.ArgumentMatchers.any(EmailMessage.class));
+    }
+
+    @Test
+    void storesProviderMetadataFromEmailSenderResult() {
+        NotificationEventEnvelope envelope = orderCreatedEnvelope(UUID.randomUUID(), "ivan@example.com");
+        when(emailSender.providerName()).thenReturn("MAILJET");
+        when(emailSender.send(org.mockito.ArgumentMatchers.any(EmailMessage.class)))
+                .thenReturn(new EmailSendResult("MAILJET", "123456789", "uuid-123", "https://api.mailjet.com/v3/message/123456789"));
+
+        processingService.process(envelope, METADATA);
+
+        var notification = notificationRepository
+                .findByEventIdAndChannel(envelope.eventId(), NotificationChannel.EMAIL)
+                .orElseThrow();
+        assertThat(notification.getProvider()).isEqualTo("MAILJET");
+        assertThat(notification.getProviderMessageId()).isEqualTo("123456789");
+        assertThat(notification.getProviderMessageUuid()).isEqualTo("uuid-123");
+        assertThat(attemptRepository.findAll().get(0).getProvider()).isEqualTo("MAILJET");
     }
 
     @Test

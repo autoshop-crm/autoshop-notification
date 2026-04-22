@@ -72,6 +72,10 @@ public class NotificationDeliveryAttemptEntity {
         this.errorMessage = trimError(errorMessage);
     }
 
+    public String getProvider() {
+        return provider;
+    }
+
     private String trimError(String message) {
         if (message == null || message.isBlank()) {
             return null;

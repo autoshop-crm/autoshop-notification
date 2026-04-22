@@ -62,6 +62,21 @@ public class NotificationEntity {
     @Column(name = "sent_at")
     private Instant sentAt;
 
+    @Column(name = "provider", length = 60)
+    private String provider;
+
+    @Column(name = "provider_message_id", length = 80)
+    private String providerMessageId;
+
+    @Column(name = "provider_message_uuid", length = 120)
+    private String providerMessageUuid;
+
+    @Column(name = "provider_message_href")
+    private String providerMessageHref;
+
+    @Column(name = "provider_accepted_at")
+    private Instant providerAcceptedAt;
+
     protected NotificationEntity() {
     }
 
@@ -114,6 +129,18 @@ public class NotificationEntity {
         this.errorMessage = null;
     }
 
+    public void markSent(String provider,
+                         String providerMessageId,
+                         String providerMessageUuid,
+                         String providerMessageHref) {
+        markSent();
+        this.provider = trim(provider, 60);
+        this.providerMessageId = trim(providerMessageId, 80);
+        this.providerMessageUuid = trim(providerMessageUuid, 120);
+        this.providerMessageHref = providerMessageHref;
+        this.providerAcceptedAt = Instant.now();
+    }
+
     public void markFailed(String errorMessage) {
         this.status = NotificationStatus.FAILED;
         this.errorMessage = trimError(errorMessage);
@@ -143,10 +170,29 @@ public class NotificationEntity {
         return recipient;
     }
 
+    public String getProvider() {
+        return provider;
+    }
+
+    public String getProviderMessageId() {
+        return providerMessageId;
+    }
+
+    public String getProviderMessageUuid() {
+        return providerMessageUuid;
+    }
+
     private String trimError(String message) {
         if (message == null || message.isBlank()) {
             return null;
         }
         return message.length() > 2000 ? message.substring(0, 2000) : message;
+    }
+
+    private String trim(String value, int maxLength) {
+        if (value == null || value.isBlank()) {
+            return null;
+        }
+        return value.length() > maxLength ? value.substring(0, maxLength) : value;
     }
 }
