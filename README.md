@@ -22,6 +22,8 @@ Start the service:
 ./gradlew bootRun --args='--spring.profiles.active=local'
 ```
 
+Default HTTP port is `8083`, so it can run next to AuthService on `8082`.
+
 ## Mailhog
 
 ```text
@@ -54,6 +56,8 @@ Mailjet production sending requires a verified sender address or domain. The Mai
 Topic: autoshop.order-events
 DLT: autoshop.order-events.dlt
 Consumer group: notification-service
+Producer: autoshop-core
+Kafka key: eventId
 ```
 
 ## Supported Events
@@ -86,6 +90,19 @@ Each event must use the common envelope:
     "createdAt": "2026-04-19T10:15:30Z"
   }
 }
+```
+
+Core publishes this envelope as a JSON string with `source=autoshop-core`, `version=1`, and uppercase event types:
+`ORDER_CREATED`, `ORDER_STATUS_CHANGED`, `ORDER_COMPLETED`.
+
+Local three-service run:
+
+```text
+Core:                http://localhost:8080
+AuthService:         http://localhost:8082
+NotificationService: http://localhost:8083
+Kafka:               localhost:9092
+Mailhog UI:          http://localhost:8025
 ```
 
 ## Idempotency

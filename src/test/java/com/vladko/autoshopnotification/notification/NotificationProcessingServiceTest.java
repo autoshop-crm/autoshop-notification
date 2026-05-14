@@ -142,6 +142,28 @@ class NotificationProcessingServiceTest {
         verify(emailSender, times(0)).send(org.mockito.ArgumentMatchers.any(EmailMessage.class));
     }
 
+    @Test
+    void rejectsUnsupportedEventVersionWithoutSending() {
+        NotificationEventEnvelope source = orderCreatedEnvelope(UUID.randomUUID(), "ivan@example.com");
+        NotificationEventEnvelope envelope = new NotificationEventEnvelope(
+                source.eventId(),
+                source.eventType(),
+                source.occurredAt(),
+                source.source(),
+                2,
+                source.correlationId(),
+                source.payload()
+        );
+
+        assertThatThrownBy(() -> processingService.process(envelope, METADATA))
+                .isInstanceOf(NonRetryableNotificationException.class)
+                .hasMessageContaining("Unsupported event version: 2");
+
+        assertThat(notificationRepository.count()).isZero();
+        assertThat(attemptRepository.count()).isZero();
+        verify(emailSender, times(0)).send(org.mockito.ArgumentMatchers.any(EmailMessage.class));
+    }
+
     private NotificationEventEnvelope orderCreatedEnvelope(UUID eventId, String email) {
         var payload = new OrderCreatedPayload(
                 42L,

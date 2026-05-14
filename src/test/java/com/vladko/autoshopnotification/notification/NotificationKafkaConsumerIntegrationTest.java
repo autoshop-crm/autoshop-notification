@@ -2,9 +2,12 @@ package com.vladko.autoshopnotification.notification;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.Mockito.after;
+import static org.mockito.Mockito.reset;
 import static org.mockito.Mockito.timeout;
 import static org.mockito.Mockito.verify;
 
+import java.math.BigDecimal;
 import java.time.Instant;
 import java.util.UUID;
 import java.util.concurrent.TimeUnit;
@@ -13,7 +16,9 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.vladko.autoshopnotification.email.EmailMessage;
 import com.vladko.autoshopnotification.email.EmailSender;
 import com.vladko.autoshopnotification.event.dto.NotificationEventEnvelope;
+import com.vladko.autoshopnotification.event.dto.OrderCompletedPayload;
 import com.vladko.autoshopnotification.event.dto.OrderCreatedPayload;
+import com.vladko.autoshopnotification.event.dto.OrderStatusChangedPayload;
 import com.vladko.autoshopnotification.notification.entity.NotificationChannel;
 import com.vladko.autoshopnotification.notification.entity.NotificationStatus;
 import com.vladko.autoshopnotification.notification.repository.NotificationDeliveryAttemptRepository;
@@ -66,6 +71,7 @@ class NotificationKafkaConsumerIntegrationTest {
 
     @BeforeEach
     void cleanDatabase() {
+        reset(emailSender);
         attemptRepository.deleteAll();
         notificationRepository.deleteAll();
         inboxRepository.deleteAll();
@@ -85,6 +91,60 @@ class NotificationKafkaConsumerIntegrationTest {
                 .findByEventIdAndChannel(envelope.eventId(), NotificationChannel.EMAIL)
                 .orElseThrow();
         assertThat(notification.getStatus()).isEqualTo(NotificationStatus.SENT);
+        assertThat(attemptRepository.count()).isEqualTo(1);
+    }
+
+    @Test
+    void consumesOrderStatusChangedEventAndSendsEmail() throws Exception {
+        NotificationEventEnvelope envelope = orderStatusChangedEnvelope();
+
+        kafkaTemplate.send("autoshop.order-events", envelope.eventId().toString(), objectMapper.writeValueAsString(envelope))
+                .get(5, TimeUnit.SECONDS);
+
+        verify(emailSender, timeout(5000).times(1)).send(any(EmailMessage.class));
+
+        waitUntilNotificationStatus(envelope.eventId(), NotificationStatus.SENT);
+        var notification = notificationRepository
+                .findByEventIdAndChannel(envelope.eventId(), NotificationChannel.EMAIL)
+                .orElseThrow();
+        assertThat(notification.getStatus()).isEqualTo(NotificationStatus.SENT);
+        assertThat(notification.getTemplateKey()).isEqualTo("ORDER_STATUS_CHANGED_EMAIL");
+        assertThat(attemptRepository.count()).isEqualTo(1);
+    }
+
+    @Test
+    void consumesOrderCompletedEventAndSendsEmail() throws Exception {
+        NotificationEventEnvelope envelope = orderCompletedEnvelope();
+
+        kafkaTemplate.send("autoshop.order-events", envelope.eventId().toString(), objectMapper.writeValueAsString(envelope))
+                .get(5, TimeUnit.SECONDS);
+
+        verify(emailSender, timeout(5000).times(1)).send(any(EmailMessage.class));
+
+        waitUntilNotificationStatus(envelope.eventId(), NotificationStatus.SENT);
+        var notification = notificationRepository
+                .findByEventIdAndChannel(envelope.eventId(), NotificationChannel.EMAIL)
+                .orElseThrow();
+        assertThat(notification.getStatus()).isEqualTo(NotificationStatus.SENT);
+        assertThat(notification.getTemplateKey()).isEqualTo("ORDER_COMPLETED_EMAIL");
+        assertThat(attemptRepository.count()).isEqualTo(1);
+    }
+
+    @Test
+    void duplicateEventIdDoesNotSendSecondEmail() throws Exception {
+        NotificationEventEnvelope envelope = orderCreatedEnvelope();
+        String json = objectMapper.writeValueAsString(envelope);
+
+        kafkaTemplate.send("autoshop.order-events", envelope.eventId().toString(), json)
+                .get(5, TimeUnit.SECONDS);
+        verify(emailSender, timeout(5000).times(1)).send(any(EmailMessage.class));
+        waitUntilNotificationStatus(envelope.eventId(), NotificationStatus.SENT);
+
+        kafkaTemplate.send("autoshop.order-events", envelope.eventId().toString(), json)
+                .get(5, TimeUnit.SECONDS);
+
+        verify(emailSender, after(1000).times(1)).send(any(EmailMessage.class));
+        assertThat(notificationRepository.count()).isEqualTo(1);
         assertThat(attemptRepository.count()).isEqualTo(1);
     }
 
@@ -117,6 +177,54 @@ class NotificationKafkaConsumerIntegrationTest {
                 UUID.randomUUID(),
                 "ORDER_CREATED",
                 Instant.parse("2026-04-19T10:15:30Z"),
+                "autoshop-core",
+                1,
+                "test-correlation-id",
+                objectMapper.valueToTree(payload)
+        );
+    }
+
+    private NotificationEventEnvelope orderStatusChangedEnvelope() {
+        var payload = new OrderStatusChangedPayload(
+                42L,
+                "AS-2026-00042",
+                7L,
+                "Ivan",
+                "Petrov",
+                "ivan@example.com",
+                "NEW",
+                "IN_PROGRESS",
+                Instant.parse("2026-04-19T12:00:00Z"),
+                ""
+        );
+        return new NotificationEventEnvelope(
+                UUID.randomUUID(),
+                "ORDER_STATUS_CHANGED",
+                Instant.parse("2026-04-19T12:00:00Z"),
+                "autoshop-core",
+                1,
+                "test-correlation-id",
+                objectMapper.valueToTree(payload)
+        );
+    }
+
+    private NotificationEventEnvelope orderCompletedEnvelope() {
+        var payload = new OrderCompletedPayload(
+                42L,
+                "AS-2026-00042",
+                7L,
+                "Ivan",
+                "Petrov",
+                "ivan@example.com",
+                Instant.parse("2026-04-19T18:30:00Z"),
+                new BigDecimal("24500.00"),
+                "RUB",
+                245
+        );
+        return new NotificationEventEnvelope(
+                UUID.randomUUID(),
+                "ORDER_COMPLETED",
+                Instant.parse("2026-04-19T18:30:00Z"),
                 "autoshop-core",
                 1,
                 "test-correlation-id",
