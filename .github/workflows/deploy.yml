@@ -13,7 +13,7 @@ permissions:
 
 jobs:
   call-shared-workflow:
-    uses: autoshop-crm/.github/.github/workflows/shared-java-docker-build.yml@main
+    uses: autoshop-crm/shared-workflows/.github/workflows/shared-java-docker-build.yml@main
     with:
       image_name: autoshop-crm/autoshop-notification
       dockerfile: Dockerfile
