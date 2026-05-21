@@ -1,0 +1,21 @@
+name: Build and Push
+
+on:
+  push:
+    branches:
+      - main
+      - staging
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  packages: write
+
+jobs:
+  call-shared-workflow:
+    uses: autoshop-crm/.github/.github/workflows/shared-java-docker-build.yml@main
+    with:
+      image_name: autoshop-crm/autoshop-notification
+      dockerfile: Dockerfile
+      context: .
+      push_latest: true
